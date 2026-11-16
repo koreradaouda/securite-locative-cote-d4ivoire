@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registre National des Locataires Indélicats - Côte d'Ivoire</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+    <!-- En-tête -->
+    <header class="bg-blue-950 text-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <h1 class="text-xl font-bold mb-2 md:mb-0">Sécurité Locative CI</h1>
+            <div class="text-xs bg-blue-900 px-3 py-1.5 rounded-lg text-blue-100 flex flex-col md:flex-row md:space-x-4 items-center">
+                <span>📧 koreradaouda@gmail.com</span>
+                <span>📞 +225 01 72 05 05 15</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        
+        <!-- ESPACE CONNEXION -->
+        <div id="auth-container" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-md mx-auto">
+            <h2 class="text-2xl font-bold mb-2 text-blue-950 text-center">Espace Professionnel</h2>
+            <p class="text-sm text-gray-600 mb-6 text-center">Connectez-vous pour accéder à la base sécurisée et gérer vos crédits.</p>
+            
+            <form id="form-connexion" onsubmit="connecterAgence(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email de l'Agence / Administrateur</label>
+                    <input type="email" id="login-email" required placeholder="koreradaouda@gmail.com" class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2.5 rounded font-medium hover:bg-blue-700 transition">Se connecter / Accéder au portail</button>
+            </form>
+
+            <div class="mt-6 border-t pt-4 text-center">
+                <p class="text-xs text-gray-500 mb-2">Vous n'avez pas encore de compte agence ?</p>
+                <button onclick="afficherInscription()" class="text-blue-600 font-semibold text-sm hover:underline">Créer un compte agence gratuitement</button>
+            </div>
+        </div>
+
+        <!-- ESPACE INSCRIPTION -->
+        <div id="register-container" class="bg-white p-8 rounded-lg shadow-sm border border-gray-200 max-w-md mx-auto hidden">
+            <h2 class="text-2xl font-bold mb-2 text-blue-950 text-center">Inscription Agence / Propriétaire</h2>
+            <p class="text-sm text-gray-600 mb-6 text-center">Rejoignez le réseau de sécurisation locative en CI.</p>
+            
+            <form id="form-inscription" onsubmit="inscrireAgence(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom de la Structure / Agence</label>
+                    <input type="text" id="reg-nom" required placeholder="Ex: CIMA / Efficience Service" class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">RCCM ou Carte Professionnelle</label>
+                    <input type="text" id="reg-rcm" required placeholder="CI-ABJ-..." class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email Professionnel</label>
+                    <input type="email" id="reg-email" required placeholder="contact@agence.ci" class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                    <input type="text" id="reg-tel" required placeholder="+225..." class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-green-600 text-white py-2.5 rounded font-medium hover:bg-green-700 transition">S'inscrire</button>
+            </form>
+
+            <div class="mt-6 border-t pt-4 text-center">
+                <button onclick="retourConnexion()" class="text-gray-600 text-sm hover:underline">← Retour à la connexion</button>
+            </div>
+        </div>
+
+        <!-- TABLEAU DE BORD DE L'AGENCE CONNECTÉE -->
+        <div id="dashboard-container" class="hidden">
+            
+            <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <p class="text-xs text-blue-800 font-semibold uppercase">Agence Connectée</p>
+                    <h3 id="ui-agence-nom" class="text-lg font-bold text-blue-950">---</h3>
+                    <p class="text-xs text-gray-600">ID Unique : <span id="ui-agence-id" class="font-mono text-gray-800">---</span></p>
+                </div>
+                <div class="mt-4 md:mt-0 flex items-center space-x-4">
+                    <div class="bg-white px-4 py-2 rounded-lg border shadow-sm text-center">
+                        <span class="block text-xs text-gray-500">Crédits Disponibles</span>
+                        <span id="ui-agence-solde" class="text-xl font-bold text-blue-600">0</span>
+                    </div>
+                    <button onclick="deconnecter()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded text-xs font-semibold hover:bg-red-100">Déconnexion</button>
+                </div>
+            </div>
+
+            <!-- Navigation par onglets internes -->
+            <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
+                <button onclick="switchTab('recherche')" id="btn-recherche" class="py-2 px-6 font-semibold border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap">Rechercher un locataire (-1 crédit)</button>
+                <button onclick="switchTab('signalement')" id="btn-signalement" class="py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">Signaler un impayé (Gratuit)</button>
+                <button onclick="switchTab('credits')" id="btn-credits" class="py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">Acheter des Crédits (Payant)</button>
+            </div>
+
+            <!-- ONGLET 1 : RECHERCHE -->
+            <div id="section-recherche" class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 class="text-xl font-semibold mb-2 text-blue-950">Consultation du Fichier</h2>
+                <p class="text-sm text-gray-600 mb-6">Saisissez le numéro de pièce d'identité du candidat pour lancer l'analyse sécurisée.</p>
+                
+                <div class="flex gap-4 mb-6">
+                    <input type="text" id="search-piece" placeholder="Numéro de CNI ou Passeport" class="flex-1 border border-gray-300 rounded p-2.5 text-sm">
+                    <button onclick="rechercherLocataire()" class="bg-blue-600 text-white px-6 py-2.5 rounded font-medium hover:bg-blue-700 transition">Consulter</button>
+                </div>
+
+                <div id="resultat-recherche" class="mt-6 hidden border-t pt-4">
+                    <h3 class="font-semibold text-lg mb-2">Résultat :</h3>
+                    <div id="contenu-resultat" class="bg-gray-50 p-4 rounded border"></div>
+                </div>
+            </div>
+
+            <!-- ONGLET 2 : SIGNALEMENT -->
+            <div id="section-signalement" class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
+                <h2 class="text-xl font-semibold mb-2 text-blue-950">Soumettre un Signalement (100% Gratuit)</h2>
+                <p class="text-sm text-gray-600 mb-6">Alimentez la base en transmettant les pièces justificatives officielles.</p>
+                
+                <form id="form-signalement" onsubmit="soumettreSignalement(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                            <input type="text" id="sig-nom" required class="w-full border border-gray-300 rounded p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Prénoms</label>
+                            <input type="text" id="sig-prenoms" required class="w-full border border-gray-300 rounded p-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Type de Pièce</label>
+                            <select id="sig-type-piece" class="w-full border border-gray-300 rounded p-2 text-sm">
+                                <option value="CNI">CNI</option>
+                                <option value="Passeport">Passeport</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Numéro de Pièce</label>
+                            <input type="text" id="sig-numero-piece" required class="w-full border border-gray-300 rounded p-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Montant Total Dû (FCFA)</label>
+                            <input type="number" id="sig-montant" required class="w-full border border-gray-300 rounded p-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Période Impayée</label>
+                            <input type="text" id="sig-periode" placeholder="ex: 2025 - 2026" required class="w-full border border-gray-300 rounded p-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pièce Justificative (PDF ou Image)</label>
+                        <input type="file" id="sig-fichier" accept=".pdf,image/*" required class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-50">
+                    </div>
+
+                    <button type="submit" class="bg-green-600 text-white px-6 py-2.5 rounded font-medium hover:bg-green-700 transition">Soumettre le dossier</button>
+                </form>
+            </div>
+
+            <!-- ONGLET 3 : ACHAT DE CRÉDITS -->
+            <div id="section-credits" class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
+                <h2 class="text-xl font-semibold mb-2 text-blue-950">Achat de Crédits de Consultation</h2>
+                <p class="text-sm text-gray-600 mb-6">Sélectionnez votre pack. Contact : <strong>+225 01 72 05 05 15</strong> / <strong>koreradaouda@gmail.com</strong>.</p>
+
+                <form id="form-credits" onsubmit="demanderRecharge(event)" class="space-y-4 max-w-xl">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Choisissez votre Forfait</label>
+                        <select id="cred-forfait" class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                            <option value="Pack 5 Consultations - 25.000 FCFA">Pack 5 Consultations — 25 000 FCFA</option>
+                            <option value="Pack 15 Consultations - 65.000 FCFA">Pack 15 Consultations — 65 000 FCFA</option>
+                            <option value="Pack Illimité Annuel - 300.000 FCFA">Pack Illimité Annuel — 300 000 FCFA</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Moyen de Paiement</label>
+                        <select id="cred-paiement" class="w-full border border-gray-300 rounded p-2.5 text-sm">
+                            <option value="Wave">Wave</option>
+                            <option value="Orange Money">Orange Money</option>
+                            <option value="Virement Bancaire">Virement Bancaire</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="bg-amber-600 text-white px-6 py-2.5 rounded font-medium hover:bg-amber-700 transition">Commander mes crédits</button>
+                </form>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Script JavaScript corrigé et global -->
+    <script>
+        let supabaseClient = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const SUPABASE_URL = 'VOTRE_SUPABASE_URL';
+            const SUPABASE_ANON_KEY = 'VOTRE_SUPABASE_ANON_KEY';
+            
+            if (window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } else {
+                console.error("Le SDK Supabase n'a pas pu être chargé.");
+            }
+        });
+
+        let agenceConnectee = null;
+
+        function afficherInscription() {
+            document.getElementById('auth-container').classList.add('hidden');
+            document.getElementById('register-container').classList.remove('hidden');
+        }
+
+        function retourConnexion() {
+            document.getElementById('register-container').classList.add('hidden');
+            document.getElementById('auth-container').classList.remove('hidden');
+        }
+
+        async function inscrireAgence(event) {
+            event.preventDefault();
+            if (!supabaseClient) {
+                alert("Erreur : La connexion à Supabase n'est pas initialisée.");
+                return;
+            }
+
+            const nom = document.getElementById('reg-nom').value;
+            const rcm = document.getElementById('reg-rcm').value;
+            const email = document.getElementById('reg-email').value;
+            const telephone = document.getElementById('reg-tel').value;
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('agences_utilisateurs')
+                    .insert([{ nom_structure: nom, rcm_ou_carte_pro: rcm, email: email, telephone: telephone, statut_compte: 'valide', solde_credits: 5 }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                alert("Compte créé avec succès ! Vous disposez de 5 crédits offerts. Connectez-vous avec votre email.");
+                retourConnexion();
+            } catch (err) {
+                alert("Erreur lors de l'inscription : " + err.message);
+            }
+        }
+
+        async function connecterAgence(event) {
+            event.preventDefault();
+            if (!supabaseClient) {
+                alert("Erreur : La connexion à Supabase n'est pas initialisée.");
+                return;
+            }
+
+            const email = document.getElementById('login-email').value.trim();
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('agences_utilisateurs')
+                    .select('*')
+                    .eq('email', email)
+                    .single();
+
+                if (error || !data) {
+                    alert("Aucun compte trouvé avec cet email (" + email + "). Vérifiez qu'il est bien enregistré dans Supabase.");
+                    return;
+                }
+
+                agenceConnectee = data;
+                
+                document.getElementById('ui-agence-nom').innerText = agenceConnectee.nom_structure;
+                document.getElementById('ui-agence-id').innerText = agenceConnectee.id;
+                document.getElementById('ui-agence-solde').innerText = agenceConnectee.solde_credits;
+
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('dashboard-container').classList.remove('hidden');
+            } catch (err) {
+                alert("Erreur de connexion : " + err.message);
+            }
+        }
+
+        function deconnecter() {
+            agenceConnectee = null;
+            document.getElementById('dashboard-container').classList.add('hidden');
+            document.getElementById('auth-container').classList.remove('hidden');
+            document.getElementById('form-connexion').reset();
+        }
+
+        function switchTab(tab) {
+            ['recherche', 'signalement', 'credits'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).className = "py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap";
+            });
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).className = "py-2 px-6 font-semibold border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap";
+        }
+
+        async function rechercherLocataire() {
+            const numeroPiece = document.getElementById('search-piece').value;
+            const resultatDiv = document.getElementById('resultat-recherche');
+            const contenuDiv = document.getElementById('contenu-resultat');
+
+            if (!numeroPiece) {
+                alert("Veuillez saisir le numéro de pièce.");
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient.rpc('rechercher_locataire_impaye', {
+                    p_agence_id: agenceConnectee.id,
+                    p_numero_piece: numeroPiece
+                });
+
+                if (error) throw error;
+
+                agenceConnectee.solde_credits -= 1;
+                document.getElementById('ui-agence-solde').innerText = agenceConnectee.solde_credits;
+
+                resultatDiv.classList.remove('hidden');
+                if (data && data.length > 0) {
+                    const loc = data[0];
+                    contenuDiv.innerHTML = `
+                        <p class="text-red-600 font-bold mb-2">⚠️ ALERTE : Locataire répertorié !</p>
+                        <p><strong>Nom & Prénoms :</strong> ${loc.nom} ${loc.prenoms}</p>
+                        <p><strong>Montant Dû :</strong> ${loc.montant_total_du} FCFA</p>
+                        <p><strong>Période :</strong> ${loc.periode_impayee}</p>
+                        <p class="mt-2"><a href="${loc.preuves_url}" target="_blank" class="text-blue-600 underline text-sm font-semibold">📄 Consulter le justificatif légal</a></p>
+                    `;
+                } else {
+                    contenuDiv.innerHTML = `<p class="text-green-600 font-medium">✅ Aucun signalement vérifié pour cette pièce d'identité.</p>`;
+                }
+            } catch (err) {
+                alert("Erreur : " + err.message);
+            }
+        }
+
+        async function soumettreSignalement(event) {
+            event.preventDefault();
+            const fichierInput = document.getElementById('sig-fichier').files[0];
+            const numeroPiece = document.getElementById('sig-numero-piece').value;
+
+            try {
+                const fileName = `${Date.now()}_${fileInput.name}`;
+                const { error: uploadError } = await supabaseClient.storage.from('preuves').upload(fileName, fichierInput);
+                if (uploadError) throw uploadError;
+
+                const { data: publicUrlData } = supabaseClient.storage.from('preuves').getPublicUrl(fileName);
+
+                const { error: insertError } = await supabaseClient.from('locataires_signales').insert([{
+                    nom: document.getElementById('sig-nom').value.toUpperCase(),
+                    prenoms: document.getElementById('sig-prenoms').value,
+                    type_piece: document.getElementById('sig-type-piece').value,
+                    numero_piece: numeroPiece,
+                    montant_total_du: parseFloat(document.getElementById('sig-montant').value),
+                    periode_impayee: document.getElementById('sig-periode').value,
+                    preuves_url: publicUrlData.publicUrl,
+                    agence_declarante_id: agenceConnectee.id,
+                    statut_dossier: 'en_attente'
+                }]);
+
+                if (insertError) throw insertError;
+                alert("Signalement soumis avec succès. Il sera mis en ligne après modération.");
+                document.getElementById('form-signalement').reset();
+            } catch (err) {
+                alert("Erreur : " + err.message);
+            }
+        }
+
+        async function demanderRecharge(event) {
+            event.preventDefault();
+            const forfait = document.getElementById('cred-forfait').value;
+            const moyenPaiement = document.getElementById('cred-paiement').value;
+
+            try {
+                const { error } = await supabaseClient.from('demandes_recharge').insert([{
+                    agence_id: agenceConnectee.id,
+                    forfait_choisi: forfait,
+                    moyen_paiement: moyenPaiement,
+                    statut_paiement: 'en_attente',
+                    email_notification: 'koreradaouda@gmail.com'
+                }]);
+
+                if (error) throw error;
+                alert("Demande de recharge enregistrée ! Contactez le +225 01 72 05 05 15 ou koreradaouda@gmail.com pour valider l'activation instantanée de vos crédits.");
+                document.getElementById('form-credits').reset();
+            } catch (err) {
+                alert("Erreur : " + err.message);
+            }
+        }
+    </script>
+</body>
+</html>
