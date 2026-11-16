@@ -1,2 +1,2 @@
-# securite-locative-cote-d4ivoire
+# securite-locative-cote-d'ivoire
 proteger les proprietaires contre les mauvais payeurs de loyer
