@@ -94,6 +94,7 @@
                 <button onclick="switchTab('recherche')" id="btn-recherche" class="py-2 px-6 font-semibold border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap">Rechercher un locataire (-1 crédit)</button>
                 <button onclick="switchTab('signalement')" id="btn-signalement" class="py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">Signaler un impayé (Gratuit)</button>
                 <button onclick="switchTab('credits')" id="btn-credits" class="py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap">Acheter des Crédits (Payant)</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="py-2 px-6 font-semibold text-purple-600 hover:text-purple-800 focus:outline-none whitespace-nowrap hidden">⚙️ Gestion Admin Recharges</button>
             </div>
 
             <!-- ONGLET 1 : RECHERCHE -->
@@ -191,17 +192,42 @@
                 </form>
             </div>
 
+            <!-- ONGLET 4 : GESTION ADMIN RECHARGES -->
+            <div id="section-admin" class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
+                <h2 class="text-xl font-semibold mb-2 text-purple-950">Demandes de Recharge en Attente</h2>
+                <p class="text-sm text-gray-600 mb-6">Validez les paiements reçus (Wave / Orange Money) pour créditer automatiquement les agences.</p>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="p-3 font-semibold text-gray-700">Date</th>
+                                <th class="p-3 font-semibold text-gray-700">Agence ID</th>
+                                <th class="p-3 font-semibold text-gray-700">Forfait</th>
+                                <th class="p-3 font-semibold text-gray-700">Paiement</th>
+                                <th class="p-3 font-semibold text-gray-700">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="liste-demandes-admin">
+                            <tr>
+                                <td colspan="5" class="p-4 text-center text-gray-500">Chargement des demandes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
 
     </main>
 
-    <!-- Script JavaScript corrigé et global -->
+    <!-- Script JavaScript -->
     <script>
         let supabaseClient = null;
 
         window.addEventListener('DOMContentLoaded', () => {
-            const SUPABASE_URL = 'https://xfnqmrepgrotojpzvhow.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbnFtcmVwZ3JvdG9qcHp2aG93Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ3NzgxNTMsImV4cCI6MjExMDM1NDE1M30.07mthk-w4fM7--IuYFkjd4KAwqf11xKmvINMzlqBADs';
+            const SUPABASE_URL = 'https://sfnkwugrdhwhluzbwtfn.supabase.co'; // Votre URL Supabase
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZWYiOiJzZm5rd3VncmRod2hsdXpid3RmbmsiLCJpYXQiOjE3MzA5NTA0NjAsImV4cCI6MjA0NjUyNjQ2MH0.exemple_cle'; // Votre clé anon
             
             if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -224,10 +250,7 @@
 
         async function inscrireAgence(event) {
             event.preventDefault();
-            if (!supabaseClient) {
-                alert("Erreur : La connexion à Supabase n'est pas initialisée.");
-                return;
-            }
+            if (!supabaseClient) return;
 
             const nom = document.getElementById('reg-nom').value;
             const rcm = document.getElementById('reg-rcm').value;
@@ -235,11 +258,9 @@
             const telephone = document.getElementById('reg-tel').value;
 
             try {
-                const { data, error } = await supabaseClient
+                const { error } = await supabaseClient
                     .from('agences_utilisateurs')
-                    .insert([{ nom_structure: nom, rcm_ou_carte_pro: rcm, email: email, telephone: telephone, statut_compte: 'valide', solde_credits: 5 }])
-                    .select()
-                    .single();
+                    .insert([{ nom_structure: nom, rcm_ou_carte_pro: rcm, email: email, telephone: telephone, statut_compte: 'valide', solde_credits: 5 }]);
 
                 if (error) throw error;
 
@@ -252,10 +273,7 @@
 
         async function connecterAgence(event) {
             event.preventDefault();
-            if (!supabaseClient) {
-                alert("Erreur : La connexion à Supabase n'est pas initialisée.");
-                return;
-            }
+            if (!supabaseClient) return;
 
             const email = document.getElementById('login-email').value.trim();
 
@@ -267,7 +285,7 @@
                     .single();
 
                 if (error || !data) {
-                    alert("Aucun compte trouvé avec cet email (" + email + "). Vérifiez qu'il est bien enregistré dans Supabase.");
+                    alert("Aucun compte trouvé avec cet email (" + email + ").");
                     return;
                 }
 
@@ -276,6 +294,14 @@
                 document.getElementById('ui-agence-nom').innerText = agenceConnectee.nom_structure;
                 document.getElementById('ui-agence-id').innerText = agenceConnectee.id;
                 document.getElementById('ui-agence-solde').innerText = agenceConnectee.solde_credits;
+
+                // Afficher l'onglet Admin si c'est l'administrateur principal
+                if (agenceConnectee.email === 'koreradaouda@gmail.com') {
+                    document.getElementById('btn-admin').classList.remove('hidden');
+                    chargerDemandesAdmin();
+                } else {
+                    document.getElementById('btn-admin').classList.add('hidden');
+                }
 
                 document.getElementById('auth-container').classList.add('hidden');
                 document.getElementById('dashboard-container').classList.remove('hidden');
@@ -292,12 +318,95 @@
         }
 
         function switchTab(tab) {
-            ['recherche', 'signalement', 'credits'].forEach(t => {
-                document.getElementById(`section-${t}`).classList.add('hidden');
-                document.getElementById(`btn-${t}`).className = "py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap";
+            ['recherche', 'signalement', 'credits', 'admin'].forEach(t => {
+                const sec = document.getElementById(`section-${t}`);
+                const btn = document.getElementById(`btn-${t}`);
+                if (sec) sec.classList.add('hidden');
+                if (btn) btn.className = "py-2 px-6 font-semibold text-gray-500 hover:text-blue-600 focus:outline-none whitespace-nowrap";
             });
-            document.getElementById(`section-${tab}`).classList.remove('hidden');
-            document.getElementById(`btn-${tab}`).className = "py-2 px-6 font-semibold border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap";
+            const activeSec = document.getElementById(`section-${tab}`);
+            const activeBtn = document.getElementById(`btn-${tab}`);
+            if (activeSec) activeSec.classList.remove('hidden');
+            if (activeBtn) {
+                if (tab === 'admin') {
+                    activeBtn.className = "py-2 px-6 font-semibold border-b-2 border-purple-600 text-purple-600 focus:outline-none whitespace-nowrap";
+                    chargerDemandesAdmin();
+                } else {
+                    activeBtn.className = "py-2 px-6 font-semibold border-b-2 border-blue-600 text-blue-600 focus:outline-none whitespace-nowrap";
+                }
+            }
+        }
+
+        async function chargerDemandesAdmin() {
+            const tbody = document.getElementById('liste-demandes-admin');
+            try {
+                const { data, error } = await supabaseClient
+                    .from('demandes_recharge')
+                    .select('*')
+                    .eq('statut_paiement', 'en_attente')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Aucune demande de recharge en attente.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = data.map(demande => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 text-xs text-gray-600">${new Date(demande.created_at).toLocaleString()}</td>
+                        <td class="p-3 font-mono text-xs">${demande.agence_id}</td>
+                        <td class="p-3 font-semibold">${demande.forfait_choisi}</td>
+                        <td class="p-3">${demande.moyen_paiement}</td>
+                        <td class="p-3">
+                            <button onclick="validerRecharge('${demande.id}', '${demande.agence_id}', '${demande.forfait_choisi}')" class="bg-green-600 text-white px-3 py-1.5 rounded text-xs hover:bg-green-700 transition">Valider & Créditer</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Erreur de chargement : ${err.message}</td></tr>`;
+            }
+        }
+
+        async function validerRecharge(demandeId, agenceId, forfaitNom) {
+            let nbCredits = 5;
+            if (forfaitNom.includes('15')) nbCredits = 15;
+            if (forfaitNom.includes('Illimité')) nbCredits = 100; // Crédits forfait illimité
+
+            try {
+                // 1. Récupérer le solde actuel de l'agence
+                const { data: agenceData, error: agenceErr } = await supabaseClient
+                    .from('agences_utilisateurs')
+                    .select('solde_credits')
+                    .eq('id', agenceId)
+                    .single();
+
+                if (agenceErr) throw agenceErr;
+
+                const nouveauSolde = (agenceData.solde_credits || 0) + nbCredits;
+
+                // 2. Mettre à jour le solde de l'agence
+                const { error: updateErr } = await supabaseClient
+                    .from('agences_utilisateurs')
+                    .update({ solde_credits: nouveauSolde })
+                    .eq('id', agenceId);
+
+                if (updateErr) throw updateErr;
+
+                // 3. Marquer la demande comme validée
+                const { error: demErr } = await supabaseClient
+                    .from('demandes_recharge')
+                    .update({ statut_paiement: 'valide' })
+                    .eq('id', demandeId);
+
+                if (demErr) throw demErr;
+
+                alert("Recharge validée avec succès ! L'agence a reçu ses crédits.");
+                chargerDemandesAdmin();
+            } catch (err) {
+                alert("Erreur lors de la validation : " + err.message);
+            }
         }
 
         async function rechercherLocataire() {
@@ -386,7 +495,7 @@
                 }]);
 
                 if (error) throw error;
-                alert("Demande de recharge enregistrée ! Contactez le +225 01 72 05 05 15 ou koreradaouda@gmail.com pour valider l'activation instantanée de vos crédits.");
+                alert("Demande de recharge enregistrée avec succès ! L'administration a été notifiée.");
                 document.getElementById('form-credits').reset();
             } catch (err) {
                 alert("Erreur : " + err.message);
